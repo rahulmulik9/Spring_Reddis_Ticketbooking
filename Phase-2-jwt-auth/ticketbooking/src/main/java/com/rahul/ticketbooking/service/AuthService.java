@@ -21,6 +21,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final TokenBlacklistService blacklistService;   // new field
 
     public void register(AuthRequest request) {
         if (personRepository.existsByUsername(request.getUsername())) {
@@ -41,5 +42,11 @@ public class AuthService {
         }
         Person person = personRepository.findByUsername(request.getUsername()).orElseThrow();
         return jwtService.generateToken(person);
+    }
+
+
+    public void logout(String token) {
+        String jti = jwtService.parse(token).getId();
+        blacklistService.blacklist(jti);
     }
 }
