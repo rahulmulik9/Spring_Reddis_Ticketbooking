@@ -1,0 +1,16 @@
+spring:
+  application:
+    name: ticketbooking
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/ticketbooking
+    username: root
+    password: root
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+server:
+  port: 8080
