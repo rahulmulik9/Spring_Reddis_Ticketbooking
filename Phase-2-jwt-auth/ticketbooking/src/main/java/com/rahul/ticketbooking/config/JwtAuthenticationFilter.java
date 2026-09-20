@@ -29,17 +29,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws ServletException, IOException {
         String header = request.getHeader("Authorization");
 
-        try {
-            Claims claims = jwtService.parse(header.substring(7));
-            if (!blacklistService.isBlacklisted(claims.getId())) {
-                String role = claims.get("role", String.class);
-                var auth = new UsernamePasswordAuthenticationToken(
-                        claims.getSubject(), null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + role)));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+        if (header != null && header.startsWith("Bearer ")) {
+            try {
+                Claims claims = jwtService.parse(header.substring(7));
+                if (!blacklistService.isBlacklisted(claims.getId())) {
+                    String role = claims.get("role", String.class);
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            claims.getSubject(), null,
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role)));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                }
+            } catch (JwtException | IllegalArgumentException e) {
+                // invalid or expired token: stay unauthenticated
             }
-        } catch (JwtException | IllegalArgumentException e) {
-            // invalid or expired token: stay unauthenticated
         }
         chain.doFilter(request, response);
     }
