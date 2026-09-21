@@ -1,0 +1,24 @@
+services:
+  ticketbooking-db:
+    image: postgres:18
+    container_name: ticketbooking-db
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: ticketbooking
+    ports:
+      - "5433:5432"
+    volumes:
+      - ticketbooking-db-data:/var/lib/postgresql
+
+  ticketbooking-redis:
+    image: redis:7
+    container_name: ticketbooking-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - ticketbooking-redis-data:/data
+
+volumes:
+  ticketbooking-db-data:
+  ticketbooking-redis-data:
