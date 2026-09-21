@@ -9,6 +9,8 @@ import com.rahul.ticketbooking.entity.SeatStatus;
 import com.rahul.ticketbooking.repository.BookingRepository;
 import com.rahul.ticketbooking.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,8 +25,9 @@ public class BookingService {
 
     private final SeatRepository seatRepository;
     private final BookingRepository bookingRepository;
+    private final CacheManager cacheManager;
 
-    // 3.8 hold: plain check-then-save, NO lock on purpose (Phase 7 fixes this)
+    @CacheEvict(cacheNames = "seats", key = "#eventId")
     @Transactional
     public HoldResponse hold(Long eventId, Long seatId, Long userId) {
         Seat seat = getSeat(eventId, seatId);
@@ -49,7 +52,7 @@ public class BookingService {
         return HoldResponse.from(seat);
     }
 
-    // 3.9 confirm (simulated payment)
+    @CacheEvict(cacheNames = "seats", key = "#eventId")
     @Transactional
     public BookingResponse confirm(Long eventId, Long seatId, Long userId) {
         Seat seat = getSeat(eventId, seatId);
@@ -73,7 +76,7 @@ public class BookingService {
         return BookingResponse.from(bookingRepository.save(booking));
     }
 
-    // 3.10 release a hold
+    @CacheEvict(cacheNames = "seats", key = "#eventId")
     @Transactional
     public void release(Long eventId, Long seatId, Long userId) {
         Seat seat = getSeat(eventId, seatId);
@@ -108,7 +111,7 @@ public class BookingService {
         Seat seat = seatRepository.findById(booking.getSeatId()).orElseThrow();
         clearHold(seat);
         seatRepository.save(seat);
-
+        cacheManager.getCache("seats").evict(seat.getEventId());
         return BookingResponse.from(booking);
     }
 

@@ -9,6 +9,10 @@ import com.rahul.ticketbooking.entity.SeatStatus;
 import com.rahul.ticketbooking.repository.EventRepository;
 import com.rahul.ticketbooking.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +34,11 @@ public class EventService {
         return eventRepository.findAll().stream().map(EventResponse::from).toList();
     }
 
+    // 4.6: cached by event id, stored in Redis as  events::{id}
+    @Cacheable(cacheNames = "events", key = "#id")
     public EventResponse findById(Long id) {
         return EventResponse.from(getEvent(id));
     }
-
     // 3.3 admin CRUD
     @Transactional
     public EventResponse create(EventRequest req) {
@@ -47,6 +52,7 @@ public class EventService {
         return EventResponse.from(saved);
     }
 
+    @CachePut(cacheNames = "events", key = "#id")
     @Transactional
     public EventResponse update(Long id, EventRequest req) {
         Event event = getEvent(id);
@@ -56,6 +62,11 @@ public class EventService {
         return EventResponse.from(eventRepository.save(event));
     }
 
+
+    @Caching(evict = {
+            @CacheEvict(cacheNames = "events", key = "#id"),
+            @CacheEvict(cacheNames = "seats", key = "#id")
+    })
     @Transactional
     public void delete(Long id) {
         getEvent(id);
@@ -74,7 +85,7 @@ public class EventService {
         seatRepository.saveAll(seats);
     }
 
-    // 3.6 seat map with lazy hold-expiry check
+    @Cacheable(cacheNames = "seats", key = "#eventId")
     @Transactional
     public List<SeatResponse> getSeats(Long eventId) {
         getEvent(eventId);
@@ -88,7 +99,7 @@ public class EventService {
                 seat.setHoldExpiresAt(null);
             }
         }
-        return seats.stream().map(SeatResponse::from).toList();
+        return new ArrayList<>(seats.stream().map(SeatResponse::from).toList());
     }
 
     private Event getEvent(Long id) {
